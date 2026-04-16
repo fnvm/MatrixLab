@@ -332,12 +332,11 @@ pom.xml
 
 # Сборка
 
-Java 25, maven
-
+Java 25
 Для теста наивного алгоритма убрать `-Dexec.args="-s"` (может считать >30мин)
 
 ```bash
 git clone 
-mvn clean compile
-mvn exec:java -Dexec.args="-s"
+mvnw.cmd clean compile
+mvnw.cmd exec:java -Dexec.args="-s"
 ```
