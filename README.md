@@ -97,7 +97,7 @@ int iStart = ti * TILE; int iEnd = Math.min(iStart + TILE, n);
 
 # Результат выполнения
 
-
+![result](result.png)
 
 # Листинг
 
