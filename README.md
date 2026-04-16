@@ -58,19 +58,14 @@ for i
 
 Разбирая наивный алгоритм отмечалось, что прохождение по столбцам вызывает проблемы с промахами кэша. Для оптимизации достаточно просто транспонировать матрицу. Тогда оба массива будут проходиться последовательно (без прыжков через 4096 чисел).
 
-С помощью метода availableProcessors() получим количество процессоров компьютера и создадим пул рабочих потоков ForkJoinPool (из стандартной библиотеки). 
-
 Далее поделим матрицу A на горизонтальные полосы — блоки по 64 строк. Для матрицы 4096×4096 получается 4096/64 = 64 блока.
 
-Далее мы указываем, что расчёты каждого блока должны производиться параллельно:
+Далее мы указываем, что расчёты каждого блока должны производиться параллельно (задействует все доступные ресурсы процессора):
 
 ```java
-pool.submit(
-            () ->
-                IntStream.range(0, (n + TILE - 1) / TILE)
-                    .parallel()
-                    .forEach(...)
-                    ...)
+IntStream.range(0, (n + TILE - 1) / TILE)
+        .parallel()
+        .forEach(...)
 ```
 
 Для блока `ti` вычисляем, с какой строки начинаем (`iStart`) и на какой заканчиваем (`iEnd`).  
@@ -121,7 +116,6 @@ public class MatrixBenchmark {
   private static final double complexity = 2.0 * Math.pow(N, 3);
   // Для собственной реализации:
   private static final int TILE = 64;
-  private static final int PARALLELISM = Runtime.getRuntime().availableProcessors();
 
   public static void main(String[] args) {
     boolean skip = false;
@@ -129,10 +123,11 @@ public class MatrixBenchmark {
       skip = true;
     }
 
-    System.out.printf("=== Matrix Multiply Benchmark  N=%d ===%n", N);
-    System.out.printf("Доступные процессоры: %d%n%n", PARALLELISM);
+    System.out.printf("Лабораторная работа #2, Лазарев Владимир Владимирович, РПИб%n%n");
 
-    System.out.printf("Теоретическая сложность c = 2·N³ = %.3e FLop%n%n", complexity);
+    System.out.printf("Умножение матриц  N=%d %n", N);
+
+    System.out.printf("Теоретическая сложность c = 2·N³ = %.3e %n%n", complexity);
 
     // Создание матриц
     double[] A = generateRandom(N);
@@ -209,42 +204,34 @@ public class MatrixBenchmark {
     double[] Bt = transpose(B, n);
     double[] C = new double[n * n];
 
-    // Делим строки матрицы A между потоками
-    ForkJoinPool pool = new ForkJoinPool(PARALLELISM);
+    IntStream.range(0, (n + TILE - 1) / TILE)
+        .parallel()
+        .forEach(
+            ti -> {
+              int iStart = ti * TILE;
+              int iEnd = Math.min(iStart + TILE, n);
 
-    pool.submit(
-            () ->
-                IntStream.range(0, (n + TILE - 1) / TILE)
-                    .parallel()
-                    .forEach(
-                        ti -> {
-                          int iStart = ti * TILE;
-                          int iEnd = Math.min(iStart + TILE, n);
+              for (int tj = 0; tj < n; tj += TILE) {
+                int jEnd = Math.min(tj + TILE, n);
 
-                          for (int tj = 0; tj < n; tj += TILE) {
-                            int jEnd = Math.min(tj + TILE, n);
+                for (int tk = 0; tk < n; tk += TILE) {
+                  int kEnd = Math.min(tk + TILE, n);
 
-                            for (int tk = 0; tk < n; tk += TILE) {
-                              int kEnd = Math.min(tk + TILE, n);
+                  for (int i = iStart; i < iEnd; i++) {
+                    int rowA = i * n + tk;
+                    for (int j = tj; j < jEnd; j++) {
+                      int rowBt = j * n + tk;
+                      double sum = C[i * n + j];
+                      for (int k = 0; k < kEnd - tk; k++) {
+                        sum += A[rowA + k] * Bt[rowBt + k];
+                      }
+                      C[i * n + j] = sum;
+                    }
+                  }
+                }
+              }
+            });
 
-                              for (int i = iStart; i < iEnd; i++) {
-                                int rowA = i * n + tk;
-                                for (int j = tj; j < jEnd; j++) {
-                                  int rowBt = j * n + tk;
-                                  double sum = C[i * n + j];
-                                  for (int k = 0; k < kEnd - tk; k++) {
-                                    sum += A[rowA + k] * Bt[rowBt + k];
-                                  }
-                                  C[i * n + j] = sum;
-                                }
-                              }
-                            }
-                          }
-                        }))
-        .join();
-
-    pool.shutdown();
-    pool.close();
     return C;
   }
 
@@ -281,7 +268,6 @@ public class MatrixBenchmark {
     return new double[] {sec, mflops};
   }
 }
-
 ```
 
 pom.xml
