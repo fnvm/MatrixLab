@@ -23,6 +23,8 @@ public class MatrixBenchmark {
     if (args.length > 0 && args[0].trim().equals("-s")) {
       skip = true;
     }
+    
+    System.out.printf("Лабораторная работа #2, Лазарев Владимир Владимирович, РПИб%n%n");
 
     System.out.printf("Умножение матриц  N=%d %n", N);
     System.out.printf("Доступные процессоры: %d%n%n", PARALLELISM);
